@@ -1,5 +1,9 @@
 # Manual
 Dataset_student
+*err
+*out
+log*
+best_model*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
