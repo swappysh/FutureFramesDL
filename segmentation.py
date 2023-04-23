@@ -196,7 +196,7 @@ class SegmentationModel(nn.Module):
         return images
 
 
-# In[27]:
+# In[37]:
 
 
 def validate(model, val_loader, criterion, device):
@@ -214,17 +214,20 @@ def validate(model, val_loader, criterion, device):
             
             # calculate accuracy
             pred = torch.argmax(outputs, dim=1)
+            # only the pixels that are not background are considered
+            pred = pred[masks != 0]
+            masks = masks[masks != 0]
             correct = (pred == masks).sum().item()
             accuracies.append(correct / masks.numel())
     return np.mean(accuracies), np.mean(losses)
 
 
-# In[28]:
+# In[44]:
 
 
 # Train on the dataset
 def train(model, train_loader, epochs, criterion, optimizer, 
-          val_loader=None, scheduler=None, device='cpu', early_stopper=None):
+          val_loader=None, scheduler=None, device='cpu', early_stopper=None, save=True):
     model.train()
     best_loss = np.inf
     for epoch in range(epochs):
@@ -245,7 +248,7 @@ def train(model, train_loader, epochs, criterion, optimizer,
             val_acc, val_loss = validate(model, val_loader, criterion, device)
             stmt += f" | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
             
-            if val_loss < best_loss:
+            if val_loss < best_loss and save:
                 best_loss = val_loss
                 print("Saving the best model")
                 torch.save(model.state_dict(), f'best_model.pth')
@@ -261,14 +264,14 @@ def train(model, train_loader, epochs, criterion, optimizer,
         print(stmt)
 
 
-# In[29]:
+# In[45]:
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device
 
 
-# In[18]:
+# In[47]:
 
 
 import random
@@ -285,8 +288,9 @@ model = SegmentationModel(3, 49).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0.0001)
 criterion = nn.CrossEntropyLoss()
-early_stopper = EarlyStopper(patience=10, min_delta=0.001)
+early_stopper = EarlyStopper(patience=50, min_delta=0.001)
+model.load_state_dict(torch.load('best_model.pth'))
 train(model, train_loader, epochs=100, 
       criterion=criterion, optimizer=optimizer, 
-      val_loader=val_loader, scheduler=scheduler, 
-      device=device, early_stopper=early_stopper)
+      val_loader=val_subset_loader, scheduler=scheduler, 
+      device=device)
