@@ -3,13 +3,13 @@
 
 # Training a Conv LSTM based Model for Image Segmentation
 
-# In[32]:
+# In[1]:
 
 
 # !conda env create -f environment.yaml
 
 
-# In[33]:
+# In[2]:
 
 
 import os
@@ -25,55 +25,56 @@ from torchvision import datasets, transforms
 from tqdm import tqdm
 
 
-# In[34]:
+# In[3]:
 
 
 # !gdown https://drive.google.com/uc?id=1I64DYabWlUU4D4ktAS8IMSrQxlaGJIKi
 # !gdown https://drive.google.com/uc?id=1nhsaIqolamUPj3q34TeEBUdXg3oHZh3L
 
 
-# In[35]:
+# In[4]:
 
 
 # Following takes a really long time.
 # !unzip Dataset_Student.zip &> /dev/null
 
 
-# In[36]:
+# In[5]:
 
 
-# Load image dataset
-train_dataset = datasets.ImageFolder(root='Dataset_Student/train', 
-                                     transform=transforms.ToTensor())
-val_dataset = datasets.ImageFolder(root='Dataset_Student/val',
-                                   transform=transforms.ToTensor())
+# # Load image dataset
+# train_dataset = datasets.ImageFolder(root='Dataset_Student/train', 
+#                                      transform=transforms.ToTensor())
+# val_dataset = datasets.ImageFolder(root='Dataset_Student/val',
+#                                    transform=transforms.ToTensor())
 
 
-# In[37]:
+# In[6]:
 
 
 # np.unique([entry[0].shape for entry in train_dataset], return_counts=True)
 # all the images have the same size
 
 
-# In[38]:
+# In[7]:
 
 
-mask = np.load('Dataset_Student/train/video_0/mask.npy')
-print(mask.shape)
-# mask also has the same shape as the images
+# mask = np.load('Dataset_Student/train/video_0/mask.npy')
+# print(mask.shape)
+# # mask also has the same shape as the images
 
 
 # ## Segementation Dataset
 
-# In[39]:
+# In[8]:
 
 
 # # Creating a custom dataset for frames
 # class SegmentationDataset(Dataset):
-#     def __init__(self, root_folder, transforms=None):
+#     def __init__(self, root_folder, img_transforms=None, mask_transforms=None):
 #         self.root_folder = root_folder
-#         self.transforms = transforms
+#         self.img_transforms = img_transforms
+#         self.mask_transforms = mask_transforms
         
 #         # Get all the folders in the root folder
 #         self.video_folders = os.listdir(root_folder)
@@ -98,41 +99,49 @@ print(mask.shape)
 #         mask = np.load(os.path.join(folder, 'mask.npy'))[idx%22]
 #         # print(f"folder idx: {idx//22} image folder: {folder}, image file: {files[idx%22]}, mask idx: {idx%22}")
         
-#         if self.transforms:
-#             image = self.transforms(image)
-#             mask = self.transforms(mask)
+#         if self.img_transforms:
+#             image = self.img_transforms(image)
+        
+#         if self.mask_transforms:
+#             mask = self.mask_transforms(mask)
         
 #         return image, mask
 
-# transformations = transforms.Compose([
+# img_transformations = transforms.Compose([
 #     torch.from_numpy,
-#     # transforms.Resize(3),
+#     transforms.Resize(40, antialias=None),
+#     # transforms.Normalize(mean=[0.5], std=[0.5])
 #     ])
+# mask_transformations = transforms.Compose([torch.from_numpy])
 
-# train_dataset = SegmentationDataset(root_folder='Dataset_Student/train', transforms=transformations)
-# val_dataset = SegmentationDataset(root_folder='Dataset_Student/val', transforms=transformations)
+# train_dataset = SegmentationDataset(root_folder='Dataset_Student/train', 
+#                                     img_transforms=img_transformations, 
+#                                     mask_transforms=mask_transformations)
+# val_dataset = SegmentationDataset(root_folder='Dataset_Student/val', 
+#                                   img_transforms=img_transformations,
+#                                   mask_transforms=mask_transformations)
 
 
-# In[40]:
+# In[9]:
 
 
 # train_dataset[0][0].shape, train_dataset[0][1].shape
 
 
-# In[41]:
+# In[10]:
 
 
 # for i in range(23):
 #     print(train_dataset[i][0].shape, train_dataset[i][1].shape)
 
 
-# In[42]:
+# In[11]:
 
 
 # len(train_dataset), len(val_dataset)
 
 
-# In[43]:
+# In[12]:
 
 
 # # creating the dataloaders
@@ -140,7 +149,7 @@ print(mask.shape)
 # val_loader = DataLoader(val_dataset, batch_size=4, shuffle=True)
 
 
-# In[44]:
+# In[13]:
 
 
 # for batch in train_loader:
@@ -149,9 +158,23 @@ print(mask.shape)
 #     break
 
 
+# In[14]:
+
+
+# # plt.imshow(np.load(os.path.join(train_dataset.video_folders[0], 'mask.npy'))[0])
+# np.unique(np.load(os.path.join(train_dataset.video_folders[0], 'mask.npy'))[0])
+
+
+# In[15]:
+
+
+# # plt.imshow(train_dataset[0][1])
+# np.unique(train_dataset[0][1])
+
+
 # ## Encoder-Decoder Architecture
 
-# In[45]:
+# In[16]:
 
 
 class EarlyStopper:
@@ -172,7 +195,7 @@ class EarlyStopper:
         return False
 
 
-# In[46]:
+# In[17]:
 
 
 class SegmentationModel(nn.Module):
@@ -199,7 +222,7 @@ class SegmentationModel(nn.Module):
         return images
 
 
-# In[47]:
+# In[18]:
 
 
 def validate(model, val_loader, criterion, device):
@@ -225,7 +248,7 @@ def validate(model, val_loader, criterion, device):
     return np.mean(accuracies), np.mean(losses)
 
 
-# In[48]:
+# In[19]:
 
 
 # Train on the dataset
@@ -267,51 +290,52 @@ def train(model, train_loader, epochs, criterion, optimizer,
         print(stmt)
 
 
-# In[49]:
+# In[20]:
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device
 
 
-# In[50]:
+# In[21]:
 
 
 from torch.utils.data import Subset
+import random
 
 # subset of train dataset and val dataset
-train_subset = Subset(train_dataset, range(0, 4))
-train_subset_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
+# train_subset = Subset(train_dataset, range(0, 4))
+# train_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
 
-val_subset = Subset(val_dataset, range(0, 4))
-val_subset_loader = DataLoader(val_subset, batch_size=4, shuffle=True)
+# val_subset = Subset(val_dataset, random.sample(range(0, len(val_dataset)), 4))
+# val_loader = DataLoader(val_subset, batch_size=4, shuffle=True)
 
 segmodel = SegmentationModel(3, 49).to(device)
-optimizer = torch.optim.Adam(segmodel.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(segmodel.parameters(), lr=0.01)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0.0001)
 criterion = nn.CrossEntropyLoss()
-early_stopper = EarlyStopper(patience=10, min_delta=0.001)
-# train(segmodel, train_subset_loader, epochs=10, 
+early_stopper = EarlyStopper(patience=100, min_delta=0.001)
+# train(segmodel, train_loader, epochs=100, 
 #       criterion=criterion, optimizer=optimizer, 
-#       val_loader=val_subset_loader, scheduler=scheduler, 
-#       device=device, early_stopper=early_stopper, save=False)
+#       val_loader=val_loader, scheduler=scheduler, 
+#       device=device, early_stopper=early_stopper, save=True)
 
 
-# In[51]:
+# In[22]:
 
 
 # load pre-trained model
 segmodel.load_state_dict(torch.load('best_model.pth', map_location=torch.device(device)))
 
 
-# In[52]:
+# In[23]:
 
 
 # # Run inference on one training image
 
 # outputs = segmodel(train_dataset[10][0].unsqueeze(0).to(device))
 # outputs = transforms.functional.resize(outputs.permute(0, 3, 1, 2),
-#                                        size=train_dataset[0][1].shape[-2:], antialias=None)
+#                                        size=train_dataset[10][1].shape, antialias=None)
 # outputs = torch.argmax(outputs, dim=1).squeeze(0).detach().cpu()
 
 # axis = plt.subplot(1, 2, 1)
@@ -322,7 +346,7 @@ segmodel.load_state_dict(torch.load('best_model.pth', map_location=torch.device(
 # plt.show()
 
 
-# In[53]:
+# In[24]:
 
 
 # plt.imshow(train_dataset[10][1])
@@ -330,7 +354,7 @@ segmodel.load_state_dict(torch.load('best_model.pth', map_location=torch.device(
 
 # ## Video Frame Dataset
 
-# In[54]:
+# In[25]:
 
 
 from torchvision import transforms
@@ -379,20 +403,20 @@ class VideoFrameDataset(Dataset):
     
 transformations = transforms.Compose([
     torch.from_numpy,
-    transforms.Resize(40, antialias=None)
+    # transforms.Resize(40, antialias=None)
 ])
 
 labeled_dataset = VideoFrameDataset('Dataset_Student/train', transforms=transformations)
 unlabeled_dataset = VideoFrameDataset('Dataset_Student/unlabeled', 
                                       transforms=transforms.Compose([
                                           torch.from_numpy,
-                                          transforms.Resize(80, antialias=None)
+                                          transforms.Resize(40, antialias=None),
                                           ]), 
                                       labeled=False, model=segmodel)
 val_dataset = VideoFrameDataset('Dataset_Student/val', transforms=transformations)
 
 
-# In[55]:
+# In[26]:
 
 
 print(labeled_dataset[0][0].shape, labeled_dataset[0][1].shape)
@@ -405,7 +429,7 @@ print(len(labeled_dataset), len(unlabeled_dataset), len(val_dataset))
 # 
 # Code from: https://github.com/ndrplz/ConvLSTM_pytorch
 
-# In[56]:
+# In[27]:
 
 
 class ConvLSTMCell(nn.Module):
@@ -465,7 +489,7 @@ class ConvLSTMCell(nn.Module):
                 torch.zeros(batch_size, self.hidden_dim, height, width, device=self.conv.weight.device))
 
 
-# In[57]:
+# In[28]:
 
 
 class ConvLSTM(nn.Module):
@@ -606,7 +630,8 @@ class ConvLSTM(nn.Module):
         return param
 
 
-# In[58]:
+# In[54]:
+
 
 
 class seq2seq(nn.Module):
@@ -614,6 +639,8 @@ class seq2seq(nn.Module):
                  batch_first, bias, return_all_layers, segmodel=segmodel):
         super(seq2seq, self).__init__()
         self.segmodel = segmodel
+        # self.conv2d = nn.Conv2d(49, 49, 2, stride=2)
+        self.maxpool = nn.MaxPool2d(8, stride=8)
         self.conv_lstm = ConvLSTM(input_dim, hidden_dim, kernel_size, 
                                   num_layers, batch_first, bias, return_all_layers)
         self.fc = nn.Linear(hidden_dim[-1], 49)
@@ -628,6 +655,21 @@ class seq2seq(nn.Module):
             masks = self.segmodel(torch.flatten(masks, start_dim=0, end_dim=1))
             masks = masks.permute(0, 3, 1, 2)
             masks = masks.view(-1, 11, masks.shape[1], masks.shape[2], masks.shape[3])
+            # print(x.shape, masks.shape)
+        
+        if labeled:
+            x = torch.flatten(x, start_dim=0, end_dim=1)
+            # x = self.conv2d(x.float())
+            x = self.maxpool(x.float())
+            # print(x.shape)
+            x = x.view(-1, 11, x.shape[1], x.shape[2], x.shape[3])
+            
+            masks = torch.flatten(masks, start_dim=0, end_dim=1)
+            # masks = self.conv2d(masks.float())
+            masks = self.maxpool(masks.float())
+            # print(masks.shape)
+            masks = masks.view(-1, 11, masks.shape[1], masks.shape[2], masks.shape[3])
+            # print(x.shape, masks.shape)
 
         for i in range(11):
             _, output = self.conv_lstm(x[:,-11:])
@@ -635,12 +677,13 @@ class seq2seq(nn.Module):
             output = self.fc(output[0][0].permute(0, 2, 3, 1))
             output = output.permute(0, 3, 1, 2).unsqueeze(1)
             x = torch.cat((x, output), dim=1)
+        # print(x.shape)
         return x[:, -11:], masks
 
 
 # ### Training
 
-# In[59]:
+# In[55]:
 
 
 # # Load checkpoint
@@ -651,7 +694,7 @@ class seq2seq(nn.Module):
 # loss = checkpoint['loss']
 
 
-# In[60]:
+# In[56]:
 
 
 def validate(model, val_loader, criteria, device=device):
@@ -659,11 +702,12 @@ def validate(model, val_loader, criteria, device=device):
     losses, accuracies = [], []
     with torch.no_grad():
         for batch_idx, (images, masks) in enumerate(val_loader):
-            images, masks = F.one_hot(images.long(), num_classes=49).permute(0, 1, 4, 2, 3).to(device), masks.to(device)
+            images = F.one_hot(images.long(), num_classes=49).permute(0, 1, 4, 2, 3).to(device)
+            masks = F.one_hot(masks.long(), num_classes=49).permute(0, 1, 4, 2, 3).to(device)
             output, masks = model(images, masks)
-            output = output.permute(0, 2, 1, 3, 4)
-            loss = criteria(output, masks.long())
-            pred = output.argmax(dim=1)
+            loss = criteria(output, masks)
+            pred = output.argmax(dim=2)
+            masks = masks.argmax(dim=2)
             pred = pred[masks != 0]
             masks = masks[masks != 0]
             prediction = (pred == masks).sum().item()
@@ -672,7 +716,7 @@ def validate(model, val_loader, criteria, device=device):
     return np.mean(losses), np.mean(accuracies)
 
 
-# In[61]:
+# In[57]:
 
 
 def train(model, labeled_loader, unlabeled_loader, val_loader, optimizer, criteria, epochs, 
@@ -683,11 +727,11 @@ def train(model, labeled_loader, unlabeled_loader, val_loader, optimizer, criter
         out_string = f"Epoch {epoch+1}/{epochs}"
         losses = []
         for batch_idx, (images, masks) in enumerate(tqdm(labeled_loader)):
-            images = F.one_hot(images.long(), num_classes=49).permute(0, 1, 4, 2, 3)
-            images, masks = images.to(device), masks.to(device)
+            images = F.one_hot(images.long(), num_classes=49).permute(0, 1, 4, 2, 3).to(device)
+            masks = F.one_hot(masks.long(), num_classes=49).permute(0, 1, 4, 2, 3).to(device)
             optimizer.zero_grad()
             output, masks = model(images, masks)
-            loss = criteria(output.permute(0, 2, 1, 3, 4), masks.long())
+            loss = criteria(output, masks)
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
@@ -698,8 +742,7 @@ def train(model, labeled_loader, unlabeled_loader, val_loader, optimizer, criter
             images, masks = images.to(device), masks.to(device)
             optimizer.zero_grad()
             output, masks = model(images, masks, False)
-            masks = masks.argmax(dim=2)
-            loss = criteria(output.permute(0, 2, 1, 3, 4), masks.long())
+            loss = criteria(output, masks)
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
@@ -722,23 +765,32 @@ def train(model, labeled_loader, unlabeled_loader, val_loader, optimizer, criter
             
 
 
-# In[62]:
+# In[64]:
 
 
 from torch.optim import lr_scheduler
 
 model = seq2seq(input_dim=49,
-             hidden_dim=[32, 32, 64],
-             num_layers=3,
-            #  hidden_dim=[64],
-            #  num_layers=1,
-             kernel_size=(3, 3),
-             batch_first=True,
-             bias=True,
-             return_all_layers=False).to(device)
+                hidden_dim=[64, 64, 128],
+                num_layers=3,
+                # hidden_dim=[64, 64, 64],
+                # num_layers=2,
+                kernel_size=(3, 3),
+                batch_first=True,
+                bias=True,
+                return_all_layers=False)
+model.load_state_dict(torch.load('complete_best_model.pth', map_location=torch.device('cpu')))
+
+cuda_count = torch.cuda.device_count()
+if cuda_count > 1:
+    print("Let's use", cuda_count, "GPUs!")
+    # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+    model = nn.DataParallel(model)
+model.to(device)
 
 # hyperparameters
 criteria = nn.CrossEntropyLoss()
+# criteria = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0.0001)
@@ -746,28 +798,30 @@ early_stopper = EarlyStopper(patience=100, min_delta=0.001)
 epochs = 100
 
 
-# In[63]:
+# In[66]:
 
 
-BATCH = 20
-# labeled_subset = Subset(labeled_dataset, range(0, 20))
-# labeled_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
+import random
 
-# unlabeled_subset = Subset(unlabeled_dataset, range(0, 40))
-# unlabeled_loader = DataLoader(unlabeled_subset, batch_size=BATCH, shuffle=True)
+# labeled_subset = Subset(labeled_dataset, range(0, 8))
+# labeled_loader = DataLoader(labeled_subset, batch_size=8, shuffle=True)
 
-labeled_loader = DataLoader(labeled_dataset, batch_size=BATCH, shuffle=True)
-unlabeled_loader = DataLoader(unlabeled_dataset, batch_size=BATCH, shuffle=True)
+# unlabeled_subset = Subset(unlabeled_dataset, range(0, 8))
+# unlabeled_loader = DataLoader(unlabeled_subset, batch_size=8, shuffle=True)
 
-val_subset = Subset(val_dataset, range(0, 200))
-val_subset_loader = DataLoader(val_subset, batch_size=BATCH, shuffle=True)
+labeled_loader = DataLoader(labeled_dataset, batch_size=8*cuda_count, shuffle=True)
+unlabeled_loader = DataLoader(unlabeled_dataset, batch_size=8*cuda_count, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=8*cuda_count, shuffle=True)
+
+# val_subset = Subset(val_dataset, random.sample(range(0, len(val_dataset)), 20))
+# val_subset_loader = DataLoader(val_subset, batch_size=8, shuffle=True)
 
 # train_loader = DataLoader(labeled_dataset, batch_size=4, shuffle=True)
 # val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
 # a = next(iter(train_loader))
 # print(a[0].shape, a[1].shape)
 
-train(model, labeled_loader, unlabeled_loader, val_subset_loader, optimizer, 
+train(model, labeled_loader, unlabeled_loader, val_loader, optimizer, 
       criteria, epochs, device, scheduler)
 
 
