@@ -3,13 +3,13 @@
 
 # Training a Conv LSTM based Model for Image Segmentation
 
-# In[1]:
+# In[2]:
 
 
 # !conda env create -f environment.yaml
 
 
-# In[2]:
+# In[3]:
 
 
 import os
@@ -25,14 +25,14 @@ from torchvision import datasets, transforms
 from tqdm import tqdm
 
 
-# In[3]:
+# In[4]:
 
 
 # !gdown https://drive.google.com/uc?id=1I64DYabWlUU4D4ktAS8IMSrQxlaGJIKi
 # !gdown https://drive.google.com/uc?id=1nhsaIqolamUPj3q34TeEBUdXg3oHZh3L
 
 
-# In[4]:
+# In[5]:
 
 
 # Following takes a really long time.
@@ -162,10 +162,10 @@ img_transformations = transforms.Compose([
     ])
 mask_transformations = transforms.Compose([torch.from_numpy])
 
-train_dataset = SegmentationDataset(root_folder='Dataset_Student/train', 
+train_dataset_segmentation_model = SegmentationDataset(root_folder='Dataset_Student/train', 
                                     img_transforms=img_transformations, 
                                     mask_transforms=mask_transformations)
-val_dataset = SegmentationDataset(root_folder='Dataset_Student/val', 
+val_dataset_segmentation_model = SegmentationDataset(root_folder='Dataset_Student/val', 
                                   img_transforms=img_transformations,
                                   mask_transforms=mask_transformations)
 
@@ -173,7 +173,7 @@ val_dataset = SegmentationDataset(root_folder='Dataset_Student/val',
 # In[11]:
 
 
-train_dataset[0][0].shape, train_dataset[0][1].shape
+train_dataset_segmentation_model[0][0].shape, train_dataset_segmentation_model[0][1].shape
 
 
 # In[12]:
@@ -186,15 +186,16 @@ train_dataset[0][0].shape, train_dataset[0][1].shape
 # In[13]:
 
 
-len(train_dataset), len(val_dataset)
+len(train_dataset_segmentation_model), len(val_dataset_segmentation_model)
 
 
 # In[14]:
 
 
 # creating the dataloaders
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=4, shuffle=True)
+train_loader = DataLoader(train_dataset_segmentation_model, batch_size=4, shuffle=True)
+val_loader = DataLoader(val_dataset_segmentation_model, batch_size=4, shuffle=True)
+val_mask_loader = val_loader
 
 
 # In[15]:
@@ -209,20 +210,20 @@ for batch in train_loader:
 # In[16]:
 
 
-plt.imshow(np.load(os.path.join(train_dataset.video_folders[0], 'mask.npy'))[0])
+plt.imshow(np.load(os.path.join(train_dataset_segmentation_model.video_folders[0], 'mask.npy'))[0])
 # np.unique(np.load(os.path.join(train_dataset.video_folders[0], 'mask.npy'))[0])
 
 
 # In[17]:
 
 
-plt.imshow(train_dataset[0][0].permute(1, 2, 0))
+plt.imshow(train_dataset_segmentation_model[0][0].permute(1, 2, 0))
 
 
 # In[18]:
 
 
-plt.imshow(train_dataset[0][1])
+plt.imshow(train_dataset_segmentation_model[0][1])
 # np.unique(train_dataset[0][1])
 
 
@@ -249,7 +250,7 @@ class EarlyStopper:
         return False
 
 
-# In[20]:
+# In[63]:
 
 
 class SegmentationModel(nn.Module):
@@ -258,18 +259,20 @@ class SegmentationModel(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, 32, 3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
+        self.conv4 = nn.Conv2d(in_channels, 64, 1)
         
         self.convtranspose1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
         self.fc2 = nn.Linear(64, out_channels)
         
         self.relu = nn.ReLU()
     
-    def forward(self, images):
-        images = self.relu(self.conv1(images))
+    def forward(self, input):
+        images = self.relu(self.conv1(input))
         images = self.relu(self.conv2(images))
         images = self.relu(self.conv3(images))
         images = F.max_pool2d(images, 2)
         images = self.relu(self.convtranspose1(images))
+        images = images + self.relu(self.conv4(input))
         images = images.permute(0, 2, 3, 1)
         images = self.fc2(images)
         images = images.permute(0, 3, 1, 2)
@@ -277,14 +280,14 @@ class SegmentationModel(nn.Module):
         return images
 
 
-# In[21]:
+# In[64]:
 
 
-def validate(model, val_loader, criterion, device):
+def validate_segmentation_model(model, val_loader, criterion, device):
     accuracies, losses = [], []
     model.eval()
     with torch.no_grad():
-        for batch in tqdm(val_loader):
+        for batch in val_loader:
             images, masks = batch
             images, masks = images.to(device), masks.long().to(device)
             outputs = model(images)
@@ -303,30 +306,27 @@ def validate(model, val_loader, criterion, device):
     return np.mean(accuracies), np.mean(losses)
 
 
-# In[22]:
+# In[65]:
 
 
 # Train on the dataset
-def train(model, train_loader, epochs, criterion, optimizer, 
+def train_segmentation_model(model, train_loader, epochs, criterion, optimizer, 
           val_loader=None, scheduler=None, device='cpu', early_stopper=None, save=True):
     model.train()
     best_loss = np.inf
     for epoch in range(epochs):
         losses = []
-        for batch in tqdm(train_loader):
+        for (images, masks) in tqdm(train_loader):
             optimizer.zero_grad()
-            images, masks = batch
             images, masks = images.to(device), masks.long().to(device)
             outputs = model(images)
-            # outputs = transforms.functional.resize(outputs.permute(0, 3, 1, 2),
-            #                                        size=masks.shape[-2:], antialias=None)
             loss = criterion(outputs, masks)
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
         stmt = f"Epoch {epoch+1}/{epochs} | Train Loss: {np.mean(losses):.4f}"
         if val_loader:
-            val_acc, val_loss = validate(model, val_loader, criterion, device)
+            val_acc, val_loss = validate_segmentation_model(model, val_loader, criterion, device)
             stmt += f" | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
             
             if val_loss < best_loss and save:
@@ -345,37 +345,46 @@ def train(model, train_loader, epochs, criterion, optimizer,
         print(stmt)
 
 
-# In[23]:
+# In[66]:
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device
 
 
-# In[26]:
+# In[68]:
 
 
 from torch.utils.data import Subset
 import random
 
 # subset of train dataset and val dataset
-# train_subset = Subset(train_dataset, range(0, 4))
-# train_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
+# train_subset_segmentation_model = Subset(train_dataset_segmentation_model, [10])
+# train_loader = DataLoader(train_subset, batch_size=1, shuffle=True)
 
 # val_subset = Subset(val_dataset, random.sample(range(0, len(val_dataset)), 4))
-# val_loader = DataLoader(val_subset, batch_size=4, shuffle=True)
+# val_subset_segmentation_model = Subset(val_dataset_segmentation_model, [10])
+# val_subset = train_subset
+# val_loader = DataLoader(val_subset, batch_size=1, shuffle=True)
+# val_mask_loader = DataLoader(val_subset, batch_size=1, shuffle=True)
+# train_loader_segmentation_model = DataLoader(train_subset_segmentation_model, 
+#                                              batch_size=1, shuffle=True)
+# val_loader_segmentation_model = DataLoader(val_subset_segmentation_model, 
+#                                            batch_size=1, shuffle=True)
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=64, shuffle=True)
+train_loader_segmentation_model = DataLoader(train_dataset_segmentation_model, 
+                                             batch_size=64, shuffle=True)
+val_loader_segmentation_model = DataLoader(val_dataset_segmentation_model, 
+                                           batch_size=64, shuffle=True)
 
 segmodel = SegmentationModel(3, 49)
-segmodel.load_state_dict(torch.load('best_model.pth', device))
+segmodel.load_state_dict(torch.load('best_model.pth', device), strict=False)
 segmodel.to(device)
 optimizer = torch.optim.Adam(segmodel.parameters(), lr=0.01)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0.0001)
 criterion = nn.CrossEntropyLoss()
 early_stopper = EarlyStopper(patience=100, min_delta=0.001)
-train(segmodel, train_loader, epochs=100, 
+train_segmentation_model(segmodel, train_loader_segmentation_model, epochs=100, 
       criterion=criterion, optimizer=optimizer, 
-      val_loader=val_loader, scheduler=scheduler, 
+      val_loader=val_loader_segmentation_model, scheduler=scheduler, 
       device=device, early_stopper=early_stopper, save=True)
