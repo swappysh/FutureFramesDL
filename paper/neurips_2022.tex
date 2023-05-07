@@ -100,7 +100,7 @@
     \item Using VPTR non auto regressive model for video frame prediction
   \end{enumerate}
 
-  Best results for semantic segmentation mask were obtained using ResNet AutoEncoderDecoder. 
+  Best results for semantic segmentation mask were obtained using ResNet AutoEncoders. 
   Able to predict video frames using VPTR in auto regressive manner.
 \end{abstract}
 
@@ -117,32 +117,50 @@ combination of the three attributes uniquely identifies one object.
 
 We tried breaking down the problem in semantic segmentation mask translation and 
 future frame prediction tasks. To solve the first problem we tried using ConvLSTM, 
-Segformer, AutoEncoderDecoder and ResNet AutoEncoderDecoder. We got the best performance 
-with ResNet AutoEncoderDecoder.
+Segformer, and ResNet AutoEncoders. We got the best performance with ResNet AutoEncoders.
 
 For the second task we tried using ConvLSTM, convBiLSTM and non autoregressive VPTR. Although 
 we were not able to converge VPTR model on the entire dataset we got best performance on a subset 
 with VPTR model.
 
 \section{Related Work}
-Almost all the SOTA models for video frame prediction are ConvLSTM based AutoEncoders. They were 
-first introduced to predict Precipitation Nowcasting \citep{Shi2015ConvolutionalLN}. They have been
-used for video frame prediction in \citet{Finn2016UnsupervisedLF}, \citet{Lotter2016DeepPC},
-\citet{Xu2016EndtoEndLO}, \citet{Ballas2015DelvingDI} and as per \citet{Jing2019SelfSupervisedVF} 
-they are shown to have work with self-supervised tasks as well.
+Most state-of-the-art (SOTA) models for video frame prediction use ConvLSTM-based AutoEncoders. 
+These models were initially developed for predicting precipitation nowcasting, as introduced by 
+\citet{Shi2015ConvolutionalLN}. They have been utilized in various studies, including 
+\citet{Finn2016UnsupervisedLF}, \citet{Lotter2016DeepPC}, \citet{Xu2016EndtoEndLO}, 
+\citet{Ballas2015DelvingDI}. According to \citet{Jing2019SelfSupervisedVF}, these models also 
+work with self-supervised tasks.
 
-In general, the SOTA models rely on complex ConvLSTM models that integrates attention 
-mechanism or memory augmented modules \citep{Ye2022VPTRET}.  For example, Long-term Motion
-Context Memory model \citep{Lee2021VideoPR} stores the long-term motion context by a
-novel memory alignment learning, and the motion information is recalled during test 
-to facilitate the long-term prediction. \citet{Chang2021MAUAM} proposed a attention-based 
-motion-aware unit to increase the temporal receptive field of RNNs.
+Although the ConvLSTM-based models are flexible and efficient, they are generally slow due to 
+recurrent prediction. To address this issue, standard CNNs or 3D CNNs and VAE-based methods 
+have been proposed, such as those by \citet{Mathieu2015DeepMV} and 
+\citet{Babaeizadeh2017StochasticVV}.
 
-The ConvLSTM-based models are flexible and efficient, but recurrent prediction is slow. Standard 
-CNNs or 3D CNNS and VAE based methods have been proposed to solve this problem 
-\citep{Mathieu2015DeepMV}, \citep{Babaeizadeh2017StochasticVV}
+State-of-the-art models commonly rely on complex ConvLSTM models integrating attention mechanisms 
+or memory-augmented modules. For instance, the Long-term Motion Context Memory model by 
+\citet{Lee2021VideoPR} stores long-term motion context through a novel memory alignment learning, 
+and the motion information is recalled during the test to facilitate long-term prediction. 
+\citet{Chang2021MAUAM} proposed an attention-based motion-aware unit to increase the temporal 
+receptive field of RNNs.
+
+Almost all the state-of-the-art (SOTA) VFFP models are based on ConvLSTMs, i.e. convolutional 
+short-term memory networks,which are efficient and powerful. Nevertheless as per \citet{Ye2022VPTRET}, 
+they suffer from some inherent problems of recurrent neural networks(RNNs), such as slow training 
+and inference speed, error accumulation during inference, gradient vanishing, and predicted 
+frames quality degradation. Researchers keep improving the performance by developing more and 
+more sophisticated ConvLSTM-based models. 
+
+With the introduction of transformers, they have also been applied in the Vision domain, 
+including video frame prediction. The ConvTransformer model by \citet{Liu2020ConvTransformerAC} 
+follows the architecture of DETR introduced in \citet{Meinhardt2021TrackFormerMT}, a classical 
+neural machine translation (NMT) Transformer architecture. DETR also inspired the development 
+of the VPTR-NAR model by \citet{Ye2022VPTRET}, a non-autoregressive model for video frame 
+prediction.
+
 
 \section{Methodology}
+We started with trying to predict the semantic segmentation mask of the frames given Normalized
+images of the frames. We tried using ConvLSTM, Segformer and ResNet AutoEncoders
 
 \section{Results}
 
