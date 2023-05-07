@@ -24,149 +24,7 @@ import torchvision
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-# ## Encoder-Decoder Architecture
-
-# In[18]:
-
-
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = np.inf
-
-    def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
-
-
-# In[19]:
-
-
-class SegmentationModel(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(SegmentationModel, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, 32, 3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
-        self.conv4 = nn.Conv2d(in_channels, 64, 1)
-        
-        self.convtranspose1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.fc2 = nn.Linear(64, out_channels)
-        
-        self.relu = nn.ReLU()
-    
-    def forward(self, input):
-        images = self.relu(self.conv1(input))
-        images = self.relu(self.conv2(images))
-        images = self.relu(self.conv3(images))
-        images = F.max_pool2d(images, 2)
-        images = self.relu(self.convtranspose1(images))
-        images = images + self.relu(self.conv4(input))
-        images = images.permute(0, 2, 3, 1)
-        images = self.fc2(images)
-        images = images.permute(0, 3, 1, 2)
-        
-        return images
-
-
-# In[20]:
-
-
-def validate_segmentation_model(model, val_loader, criterion, device):
-    accuracies, losses = [], []
-    model.eval()
-    with torch.no_grad():
-        for batch in val_loader:
-            images, masks = batch
-            images, masks = images.to(device), masks.long().to(device)
-            outputs = model(images)
-            # outputs = transforms.functional.resize(outputs.permute(0, 3, 1, 2),
-            #                                        size=masks.shape[-2:], antialias=None)
-            loss = criterion(outputs, masks)
-            losses.append(loss.item())
-            
-            # calculate accuracy
-            pred = torch.argmax(outputs, dim=1)
-            # only the pixels that are not background are considered
-            pred = pred[masks != 0]
-            masks = masks[masks != 0]
-            correct = (pred == masks).sum().item()
-            accuracies.append(correct / masks.numel())
-    return np.mean(accuracies), np.mean(losses)
-
-
-# In[21]:
-
-
-# Train on the dataset
-def train_segmentation_model(model, train_loader, epochs, criterion, optimizer, 
-          val_loader=None, scheduler=None, device='cpu', early_stopper=None, save=True):
-    model.train()
-    best_loss = np.inf
-    for epoch in range(epochs):
-        losses = []
-        for (images, masks) in tqdm(train_loader):
-            optimizer.zero_grad()
-            images, masks = images.to(device), masks.long().to(device)
-            outputs = model(images)
-            loss = criterion(outputs, masks)
-            losses.append(loss.item())
-            loss.backward()
-            optimizer.step()
-        stmt = f"Epoch {epoch+1}/{epochs} | Train Loss: {np.mean(losses):.4f}"
-        if val_loader:
-            val_acc, val_loss = validate_segmentation_model(model, val_loader, criterion, device)
-            stmt += f" | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}"
-            
-            if val_loss < best_loss and save:
-                best_loss = val_loss
-                print("Saving the best model")
-                torch.save(model.state_dict(), f'best_model.pth')
-                
-            if early_stopper and early_stopper.early_stop(loss):
-                print("Early stopping")
-                break
-        
-        if scheduler:
-            scheduler.step()
-            stmt += f" | LR: {scheduler.get_last_lr()[0]:.6f}"
-        
-        print(stmt)
-
-
-# In[22]:
-
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu')
-device
-
-
-# In[23]:
-
-
-from torch.utils.data import Subset
-import random
-
-
-
-segmodel = SegmentationModel(3, 49)
-segmodel.load_state_dict(torch.load('best_model.pth', device), strict=False)
-segmodel.to(device)
-optimizer = torch.optim.Adam(segmodel.parameters(), lr=0.01)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0.0001)
-criterion = nn.CrossEntropyLoss()
-early_stopper = EarlyStopper(patience=100, min_delta=0.001)
-
-# ## Resnet Encoder and Decoder
-
 
 # In[32]:
 
@@ -292,54 +150,43 @@ def single_iter(VPTR_Enc, VPTR_Dec, criterion, optimizer, sample, device, train_
 # In[37]:
 
 
+# Load weights from previous training
+# resume_ckpt = ckpt_save_dir.joinpath('epoch_65.tar')
+# loss_dict, start_epoch = resume_training({'VPTR_Enc': VPTR_Enc, 'VPTR_Dec': VPTR_Dec}, 
+#                                          {}, resume_ckpt, loss_name_list)
 
-resume_ckpt = ckpt_save_dir.joinpath('epoch_65.tar')
-loss_dict, start_epoch = resume_training({'VPTR_Enc': VPTR_Enc, 'VPTR_Dec': VPTR_Dec}, 
-                                         {}, resume_ckpt, loss_name_list)
-VPTR_Enc_seg = VPTR_Enc
-VPTR_Dec_seg = VPTR_Dec
+# Train Resnet AE
+for epoch in range(1, 1000):
+        #Train
+        EpochAveMeter = AverageMeters(loss_name_list)
+        for idx, sample in enumerate(train_loader, 0):
+            iter_loss_dict = single_iter(VPTR_Enc, VPTR_Dec, criterion, optimizer, sample, device, train_flag = True)
+            EpochAveMeter.iter_update(iter_loss_dict)
+            
+        loss_dict = EpochAveMeter.epoch_update(loss_dict, epoch, train_flag = True)
+        
+        #validation
+        EpochAveMeter = AverageMeters(loss_name_list)
+        for idx, sample in enumerate(val_loader, 0):
+            iter_loss_dict = single_iter(VPTR_Enc, VPTR_Dec, criterion, optimizer, sample, device, train_flag = False)
+            EpochAveMeter.iter_update(iter_loss_dict)
+        loss_dict = EpochAveMeter.epoch_update(loss_dict, epoch, train_flag = False)
+        
+        # save_ckpt({'VPTR_Enc': VPTR_Enc, 'VPTR_Dec': VPTR_Dec, 'VPTR_Disc': VPTR_Disc}, 
+        #         {'optimizer_G': optimizer_G, 'optimizer_D': optimizer_D}, 
+        #         epoch, loss_dict, ckpt_save_dir)
+            
+        print(f'epoch {epoch}', EpochAveMeter.meters['AE_total'])
 
 # ## Video Frame Dataset
-
-# In[43]:
-
-import torch.distributed as dist
-import torch
-
-def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-
-    if not dist.is_initialized():
-        return False
-
-    return True
-
-def save_on_master(*args, **kwargs):
-
-    if is_main_process():
-        torch.save(*args, **kwargs)
-
-def get_rank():
-
-    if not is_dist_avail_and_initialized():
-        return 0
-
-    return dist.get_rank()
-
-def is_main_process():
-
-    return get_rank() == 0
-
 
 from torchvision import transforms
 
 class VideoFrameDataset(Dataset):
-    def __init__(self, root_folder, transforms=None, labeled=True, model=None):
+    def __init__(self, root_folder, transforms=None, labeled=True):
         self.root_folder = root_folder
         self.transforms = transforms
         self.labeled = labeled
-        self.model = model
         
         # Get all the folders in the root folder
         self.video_folders = os.listdir(root_folder)
@@ -385,7 +232,7 @@ trick_dataset = VideoFrameDataset('/Dataset_Student/train', transforms=transform
                                           transforms.Normalize(mean=[0.5061, 0.5045, 0.5008], 
                                                                std=[0.0571, 0.0567, 0.0614])
                                           ]), 
-                                      labeled=False, model=segmodel)
+                                      labeled=False)
 """
 unlabeled_dataset = VideoFrameDataset('/Dataset_Student/unlabeled', 
                                       transforms=transforms.Compose([
@@ -393,24 +240,14 @@ unlabeled_dataset = VideoFrameDataset('/Dataset_Student/unlabeled',
                                           transforms.Normalize(mean=[0.5061, 0.5045, 0.5008], 
                                                                std=[0.0571, 0.0567, 0.0614])
                                           ]), 
-                                      labeled=False, model=segmodel)
+                                      labeled=False)
 #val_dataset = VideoFrameDataset('/Dataset_Student/val', transforms=transformations)
 val_trick_dataset = VideoFrameDataset('/Dataset_Student/val', transforms=transforms.Compose([
     torch.from_numpy,
     transforms.Normalize(mean=[0.5061, 0.5045, 0.5008],
         std=[0.0571, 0.0567, 0.0614])
     ]),
-    labeled=False, model=segmodel)
-
-
-# In[44]:
-
-"""
-print(labeled_dataset[0][0].shape, labeled_dataset[0][1].shape)
-print(unlabeled_dataset[0][0].shape, unlabeled_dataset[0][1].shape)
-print(val_dataset[0][0].shape, val_dataset[0][1].shape)
-print(len(labeled_dataset), len(unlabeled_dataset), len(val_dataset))
-"""
+    labeled=False)
 
 
 # #### Attention Module
@@ -521,27 +358,6 @@ def single_iter(VPTR_Enc, VPTR_Dec, VPTR_Disc, VPTR_Transformer, optimizer_T, op
     
     return iter_loss_dict
 
-def init_distributed():
-
-    # Initializes the distributed backend which will take care of synchronizing nodes/GPUs
-    dist_url = "env://" # default
-
-    # only works with torch.distributed.launch // torch.run
-    rank = int(os.environ["RANK"])
-    world_size = int(os.environ['WORLD_SIZE'])
-    local_rank = int(os.environ['LOCAL_RANK'])
-    dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=world_size,
-            rank=rank)
-
-    # this will make all .cuda() calls work properly
-    torch.cuda.set_device(local_rank)
-
-    # synchronizes all the threads to reach this point before moving on
-    dist.barrier()
-
 # In[65]:
 
 
@@ -574,26 +390,15 @@ VPTR_Enc = VPTR_Enc.eval()
 VPTR_Dec = VPTR_Dec.eval()
 
 VPTR_Disc = None
-#VPTR_Disc = VPTRDisc(img_channels, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d).to(device)
-#VPTR_Disc = VPTR_Disc.eval()
-#init_weights(VPTR_Disc)
-# init_weights(VPTR_Enc)
-# init_weights(VPTR_Dec)
 print("Model Initialized")
 
 VPTR_Transformer = VPTRFormerNAR(num_past_frames, num_future_frames, encH=encH, encW = encW, d_model=encC, 
                                 nhead=8, num_encoder_layers=4, num_decoder_layers=8, dropout=0.1, 
                                 window_size=4, Spatial_FFN_hidden_ratio=4, TSLMA_flag = TSLMA_flag, rpe = rpe, 
                                 device=device)
-#cuda_count = torch.cuda.device_count()
-#if cuda_count > 1:
-#    print("Let's use", cuda_count, "GPUs!")
-#    # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-#    VPTR_Transformer = nn.DataParallel(VPTR_Transformer)
 VPTR_Transformer = VPTR_Transformer.to(device)
 
 optimizer_D = None
-#optimizer_D = torch.optim.Adam(params = VPTR_Disc.parameters(), lr = Transformer_lr, betas = (0.5, 0.999))
 optimizer_T = torch.optim.AdamW(params = VPTR_Transformer.parameters(), lr = Transformer_lr)
 
 Transformer_parameters = sum(p.numel() for p in VPTR_Transformer.parameters() if p.requires_grad)
@@ -632,12 +437,6 @@ if cuda_count > 1:
     VPTR_Transformer = nn.DataParallel(VPTR_Transformer)
 #VPTR_Transformer = VPTR_Transformer.to(device)
 
-"""
-optimizer_T = torch.optim.AdamW(params = VPTR_Transformer.parameters(), lr = Transformer_lr)
-
-Transformer_parameters = sum(p.numel() for p in VPTR_Transformer.parameters() if p.requires_grad)
-print(f"NAR Transformer num_parameters: {Transformer_parameters}")
-"""
 # In[67]:
 
 from torch.utils.data.distributed import DistributedSampler
@@ -684,10 +483,6 @@ for epoch in range(1, epochs+1):
         EpochAveMeter.iter_update(iter_loss_dict)
         
     loss_dict = EpochAveMeter.epoch_update(loss_dict, epoch, train_flag = True)
-    # write_summary(summary_writer, loss_dict, train_flag = True)
-
-    # if epoch % show_example_epochs == 0 or epoch == 1:
-    #     NAR_show_samples(VPTR_Enc, VPTR_Dec, VPTR_Transformer, sample, ckpt_save_dir.joinpath(f'train_gifs_epoch{epoch}'))
             
     torch.cuda.empty_cache()
     #validation
@@ -697,16 +492,9 @@ for epoch in range(1, epochs+1):
                                      optimizer_T, optimizer_D, sample, device, train_flag = False)
         EpochAveMeter.iter_update(iter_loss_dict)
     loss_dict = EpochAveMeter.epoch_update(loss_dict, epoch, train_flag = False)
-    # write_summary(summary_writer, loss_dict, train_flag = False)
 
     #if epoch % save_ckpt_epochs == 0:
     save_ckpt({'VPTR_Transformer': VPTR_Transformer}, {'optimizer_T': optimizer_T}, epoch, loss_dict, ckpt_save_dir)
-    
-    # if epoch % show_example_epochs == 0 or epoch == 1:
-    #     for idx, sample in enumerate(test_loader, random.randint(0, len(test_loader) - 1)):
-    #         NAR_show_samples(VPTR_Enc, VPTR_Dec, VPTR_Transformer, sample, 
-    #                          ckpt_save_dir.joinpath(f'test_gifs_epoch{epoch}'))
-    #         break
         
     epoch_time = datetime.now() - epoch_st
 
