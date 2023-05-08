@@ -33,6 +33,9 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 
+\usepackage{graphicx}
+\graphicspath{ {./figures/} }
+
 
 \title{Video Frame Prediction}
 
@@ -81,52 +84,48 @@
 
 
 \begin{abstract}
-  Attempting Video frame prediction task. Things tried:
-  \begin{enumerate}
-    \item Semantic Segmentation Mask using ConvLSTM
-    \item Tried Segformer model for sematic segmentation mask
-    \item Using AutoEncoderDecoder for Semantic segmentation mask
-    \item Training convLSTM for video frame prediction in auto regressive
-      manner
-    \item Tried convLSTM for video frame prediction in non auto regressive
-      manner by predicting all frames at once
-    \item Tried convBiLSTM for video frame prediction in non auto regressive
-      manner by predicting all frames at once
-    \item Implemented DataParallel for multiGPU training
-    \item Normalized images before feeding to convLSTM
-    \item Added skip connections in AutoEncoderDecoder for semantic segmentation
-      mask
-    \item Using ResNet AutoEncoderDecoder for semantic segmentation mask
-    \item Using VPTR non auto regressive model for video frame prediction
-  \end{enumerate}
+  This abstract details an attempt to solve a video frame prediction task by utilizing various 
+models and techniques, including ConvLSTM, Segformer, and AutoEncoders for semantic segmentation 
+mask, ConvLSTM in an auto-regressive manner, ConvBiLSTM in a non-auto regressive manner by 
+predicting all frames at once, and ultimately settling on VPTR Non Auto Regressive due to its 
+convergence on a subset of data. The authors encountered significant challenges with training 
+time and memory constraints, and attempted to address these issues by using mixed precision 
+training and unsuccessfully attempting to train on multiple GPUs using PyTorch Distributed Data 
+Parallel.
 
-  Best results for semantic segmentation mask were obtained using ResNet AutoEncoders. 
-  Able to predict video frames using VPTR in auto regressive manner.
+The ResNet AutoEncoders proved to be the most effective for the semantic segmentation mask with 
+an impressive accuracy of 0.993 on the validation set. The VPTR model achieved a decent accuracy 
+of 0.9 on a subset of the data for video frame prediction. Although the model was unable to 
+converge on the whole dataset due to time and memory constraints, the authors believe that with 
+more time and resources, they would have achieved better accuracy in predicting future frames.
 \end{abstract}
 
 \section{Introduction}
-This document describes the methodology and result analysis for the final Project 
-in Deep Leanring Course. The task is to predict the semantic segmentation mask of 
-22\textsuperscript{nd} frame given initial 11 frames of video. 
+In recent years, predicting future frames in videos has become a challenging task that has 
+attracted extensive research. This task has numerous applications, including video compression, 
+editing, and surveillance. This report documents an attempt to solve a video frame prediction 
+task presented by the NYU Deep Learning Course, which required predicting the semantic 
+segmentation mask of the 22\textsuperscript{nd} frame of a video based on the initial 11 
+frames.
 
-These videos have simple 3D shapes that interact with each other according to basic 
-physics principles. Objects in videos have three shapes (cube, sphere, and cylinder), 
-two materials (metal and rubber), and eight colors (gray, red, blue, green, brown, cyan, 
-purple, and yellow). In each video, there is no identical objects, such that each 
-combination of the three attributes uniquely identifies one object.
+The videos used in this project featured simple 3D shapes that interacted with each other 
+based on basic physics principles. Each object in the videos was uniquely identified by a 
+combination of three attributes: shape (cube, sphere, or cylinder), material (metal or rubber), 
+and color (gray, red, blue, green, brown, cyan, purple, or yellow). No identical objects 
+appeared in a single video.
 
-We tried breaking down the problem in semantic segmentation mask translation and 
-future frame prediction tasks. To solve the first problem we tried using ConvLSTM, 
-Segformer, and ResNet AutoEncoders. We got the best performance with ResNet AutoEncoders.
-
-For the second task we tried using ConvLSTM, convBiLSTM and non autoregressive VPTR. Although 
-we were not able to converge VPTR model on the entire dataset we got best performance on a subset 
-with VPTR model.
+To address the challenges of semantic segmentation mask translation and future frame prediction, 
+we explored several approaches, including ConvLSTM, Segformer, ResNet AutoEncoders, convBiLSTM, 
+and non-autoregressive VPTR. The ResNet AutoEncoders achieved the best results for the semantic 
+segmentation mask translation task with an accuracy of 0.993 on the validation set. For the 
+future frame prediction task, we achieved the best performance on a subset of the dataset using 
+the VPTR model, although we were unable to converge the model on the entire dataset due to 
+time and memory constraints.
 
 \section{Related Work}
 Most state-of-the-art (SOTA) models for video frame prediction use ConvLSTM-based AutoEncoders. 
 These models were initially developed for predicting precipitation nowcasting, as introduced by 
-\citet{Shi2015ConvolutionalLN}. They have been utilized in various studies, including 
+\citet{Shi2015ConvolutionalLN}. They have been later utilized for video prediction task, including 
 \citet{Finn2016UnsupervisedLF}, \citet{Lotter2016DeepPC}, \citet{Xu2016EndtoEndLO}, 
 \citet{Ballas2015DelvingDI}. According to \citet{Jing2019SelfSupervisedVF}, these models also 
 work with self-supervised tasks.
@@ -157,272 +156,119 @@ neural machine translation (NMT) Transformer architecture. DETR also inspired th
 of the VPTR-NAR model by \citet{Ye2022VPTRET}, a non-autoregressive model for video frame 
 prediction.
 
-
 \section{Methodology}
-We started with trying to predict the semantic segmentation mask of the frames given Normalized
-images of the frames. We tried using ConvLSTM, Segformer and ResNet AutoEncoders
-
-\section{Results}
-
-\section{Submission of papers to NeurIPS 2022}
-
-
-Please read the instructions below carefully and follow them faithfully.
-
-
-\subsection{Style}
-
-
-Papers to be submitted to NeurIPS 2022 must be prepared according to the
-instructions presented here. Papers may only be up to {\bf nine} pages long,
-including figures. Additional pages \emph{containing only acknowledgments and
-references} are allowed. Papers that exceed the page limit will not be
-reviewed, or in any other way considered for presentation at the conference.
-
-
-The margins in 2022 are the same as those in 2007, which allow for $\sim$$15\%$
-more words in the paper compared to earlier years.
-
-
-Authors are required to use the NeurIPS \LaTeX{} style files obtainable at the
-NeurIPS website as indicated below. Please make sure you use the current files
-and not previous versions. Tweaking the style files may be grounds for
-rejection.
-
-
-\subsection{Retrieval of style files}
-
-
-The style files for NeurIPS and other conference information are available on
-the World Wide Web at
-\begin{center}
-  \url{http://www.neurips.cc/}
-\end{center}
-The file \verb+neurips_2022.pdf+ contains these instructions and illustrates the
-various formatting requirements your NeurIPS paper must satisfy.
-
-
-The only supported style file for NeurIPS 2022 is \verb+neurips_2022.sty+,
-rewritten for \LaTeXe{}.  \textbf{Previous style files for \LaTeX{} 2.09,
-  Microsoft Word, and RTF are no longer supported!}
-
-
-The \LaTeX{} style file contains three optional arguments: \verb+final+, which
-creates a camera-ready copy, \verb+preprint+, which creates a preprint for
-submission to, e.g., arXiv, and \verb+nonatbib+, which will not load the
-\verb+natbib+ package for you in case of package clash.
-
-
-\paragraph{Preprint option}
-If you wish to post a preprint of your work online, e.g., on arXiv, using the
-NeurIPS style, please use the \verb+preprint+ option. This will create a
-nonanonymized version of your work with the text ``Preprint. Work in progress.''
-in the footer. This version may be distributed as you see fit. Please \textbf{do
-  not} use the \verb+final+ option, which should \textbf{only} be used for
-papers accepted to NeurIPS.
-
-
-At submission time, please omit the \verb+final+ and \verb+preprint+
-options. This will anonymize your submission and add line numbers to aid
-review. Please do \emph{not} refer to these line numbers in your paper as they
-will be removed during generation of camera-ready copies.
-
-
-The file \verb+neurips_2022.tex+ may be used as a ``shell'' for writing your
-paper. All you have to do is replace the author, title, abstract, and text of
-the paper with your own.
-
-
-The formatting instructions contained in these style files are summarized in
-Sections \ref{gen_inst}, \ref{headings}, and \ref{others} below.
-
-
-\section{General formatting instructions}
-\label{gen_inst}
-
-
-The text must be confined within a rectangle 5.5~inches (33~picas) wide and
-9~inches (54~picas) long. The left margin is 1.5~inch (9~picas).  Use 10~point
-type with a vertical spacing (leading) of 11~points.  Times New Roman is the
-preferred typeface throughout, and will be selected for you by default.
-Paragraphs are separated by \nicefrac{1}{2}~line space (5.5 points), with no
-indentation.
-
-
-The paper title should be 17~point, initial caps/lower case, bold, centered
-between two horizontal rules. The top rule should be 4~points thick and the
-bottom rule should be 1~point thick. Allow \nicefrac{1}{4}~inch space above and
-below the title to rules. All pages should start at 1~inch (6~picas) from the
-top of the page.
-
-
-For the final version, authors' names are set in boldface, and each name is
-centered above the corresponding address. The lead author's name is to be listed
-first (left-most), and the co-authors' names (if different address) are set to
-follow. If there is only one co-author, list both author and co-author side by
-side.
-
-
-Please pay special attention to the instructions in Section \ref{others}
-regarding figures, tables, acknowledgments, and references.
-
-
-\section{Headings: first level}
-\label{headings}
-
-
-All headings should be lower case (except for first word and proper nouns),
-flush left, and bold.
-
-
-First-level headings should be in 12-point type.
-
-
-\subsection{Headings: second level}
-
-
-Second-level headings should be in 10-point type.
-
-
-\subsubsection{Headings: third level}
-
-
-Third-level headings should be in 10-point type.
-
-
-\paragraph{Paragraphs}
-
-
-There is also a \verb+\paragraph+ command available, which sets the heading in
-bold, flush left, and inline with the text, with the heading followed by 1\,em
-of space.
-
-
-\section{Citations, figures, tables, references}
-\label{others}
-
-
-These instructions apply to everyone.
-
-
-\subsection{Citations within the text}
-
-
-The \verb+natbib+ package will be loaded for you by default.  Citations may be
-author/year or numeric, as long as you maintain internal consistency.  As to the
-format of the references themselves, any style is acceptable as long as it is
-used consistently.
-
-
-The documentation for \verb+natbib+ may be found at
-\begin{center}
-  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
-\end{center}
-Of note is the command \verb+\citet+, which produces citations appropriate for
-use in inline text.  For example,
-\begin{verbatim}
-   \citet{hasselmo} investigated\dots
-\end{verbatim}
-produces
-\begin{quote}
-  Hasselmo, et al.\ (1995) investigated\dots
-\end{quote}
-
-
-If you wish to load the \verb+natbib+ package with options, you may add the
-following before loading the \verb+neurips_2022+ package:
-\begin{verbatim}
-   \PassOptionsToPackage{options}{natbib}
-\end{verbatim}
-
-
-If \verb+natbib+ clashes with another package you load, you can add the optional
-argument \verb+nonatbib+ when loading the style file:
-\begin{verbatim}
-   \usepackage[nonatbib]{neurips_2022}
-\end{verbatim}
-
-
-As submission is double blind, refer to your own published work in the third
-person. That is, use ``In the previous work of Jones et al.\ [4],'' not ``In our
-previous work [4].'' If you cite your other papers that are not widely available
-(e.g., a journal paper under review), use anonymous author names in the
-citation, e.g., an author of the form ``A.\ Anonymous.''
-
-
-\subsection{Footnotes}
-
-
-Footnotes should be used sparingly.  If you do require a footnote, indicate
-footnotes with a number\footnote{Sample of the first footnote.} in the
-text. Place the footnotes at the bottom of the page on which they appear.
-Precede the footnote with a horizontal rule of 2~inches (12~picas).
-
-
-Note that footnotes are properly typeset \emph{after} punctuation
-marks.\footnote{As in this example.}
-
-
-\subsection{Figures}
-
+\subsection{Semantic Segmentation Mask}
+We settled on ResNet AutoEncoders to solve the semantic segmentation mask translation task after 
+exploring multiple approaches. ResNet, a CNN architecture with skip connections, was used to 
+avoid vanishing gradients. AutoEncoders, a type of neural network for dimensionality reduction,
+were employed to learn representations of the input using the encoder and to construct a 
+semantic segmentation mask from the learned representation using the decoder. To simplify 
+training, we removed any skip connections between the encoder and decoder layers, as suggested 
+by \citet{Ye2022VPTRET}.
+
+The encoder was composed of nine ResNet blocks, each with two convolutional layers. The decoder 
+contained three deconvolutional layers with one filter and a sigmoid activation function at the 
+end to produce a semantic segmentation mask with a channel dimension of 49. We used Mean Square 
+Error Loss and the Adam optimizer with a learning rate of 0.0002 to train the model. Due to 
+memory constraints, we trained the model with a batch size of 1 for 100 epochs. We trained the 
+model on 1000 labeled videos and validated it on another 1000 labeled videos. The model took 
+approximately 16 hours to train on a single GPU.
 
 \begin{figure}
   \centering
-  \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
-  \caption{Sample figure caption.}
+  \includegraphics[scale=0.25]{VPTR_arc.png}
+  \caption{VPTR NAR model architecture}
+  \label{fig:architecture}
+\end{figure}
+
+\subsection{Future Frame Prediction}
+In the second task of predicting future frames, we experimented with various models, including 
+ConvLSTM, convBiLSTM, and VPTR. Ultimately, we chose VPTR-NAR as it was the most recent and 
+state-of-the-art model for video frame prediction. \citet{Ye2022VPTRET} has two approaches one 
+autoregressive and another non-autoregressive. As per their results they conculded that
+NAR works better and hence we decided to use NAR. NAR utilizes a transformer encoder and a 
+transformer decoder in its architecture.
+
+The architecture of VPTR is illustrated in Figure \ref{fig:architecture}. The left part of the 
+figure, denoted as $\mathcal{T}_E$, represents the encoder, which encodes all past frame 
+features $z_t$ ($t \in [1, L]$) into memory representations $e_t$ ($t \in [1, L]$). The 
+architecture of $\mathcal{T}_E$ comprises multiple VidHRFormer blocks, each of which contains a 
+multi-head self-attention layer, a feed-forward layer, and a layer normalization layer.
+
+On the right part of the figure, denoted as $\mathcal{T}_D$, the decoder is illustrated. It 
+includes two additional layers compared to $\mathcal{T}_E$: a temporal multi-head attention 
+(MHA) layer and an output convolutional feed-forward network (Conv FFN) layer. The Temporal MHA 
+layer is also known as the encoder-decoder attention layer, which takes the memories as value 
+and key, and queries derived from the future frame query sequence ${q_{L+1}, \cdots, q_{L+N} }$.
+
+\section{Dataset}
+The dataset consists of 13,000 unlabeled videos, 2,000 labeled videos and 1000 test videos. 
+The labeled videos are further divided into 1,000 training videos and 1,000 validation videos. 
+Labeled and unlabeled videos have 22 frames each and the test videos have 11 frames each.
+Labeled videos also have the semantic segmentation mask for all the frames. All the frames and 
+the semantic segmentation masks are of size $160 \times 240$.
+
+We created two different datasets for the two tasks. For the first task of semantic
+segmentation mask translation, we used the labeled videos and constructed a dataset consisting
+of frames with their corresponding semantic segmentation masks. For the second task of future
+frame prediction, we utilized only the unlabeled videos containing 11 frames each along with
+the corresponding 11 future frames to construct the dataset.
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.25]{reconstructed.png}
+  \caption{Reconstructed semantic segmentation mask}
+  \label{fig:reconstructed}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.3]{VPTR_pipeline.png}
+  \caption{Frame prediction pipeline}
+  \label{fig:pipeline}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.3]{subset.png}
+  \caption{Training on subset of frames}
+  \label{fig:subset}
 \end{figure}
 
 
-All artwork must be neat, clean, and legible. Lines should be dark enough for
-purposes of reproduction. The figure number and caption always appear after the
-figure. Place one line space before the figure caption and one line space after
-the figure. The figure caption should be lower case (except for first word and
-proper nouns); figures are numbered consecutively.
+\section{Results}
+Our experiments started with predicting the semantic segmentation mask of the frames given
+normalized images of the frames. We tested ConvLSTM, Segformer, and ResNet AutoEncoders. Both
+ConvLSTM and Segformer showed good performance, achieving a decent accuracy of 0.93. However,
+ResNet AutoEncoders outperformed them, achieving a startling accuracy of 0.993 on the validation
+set. Figure \ref{fig:reconstructed} shows the reconstructed semantic segmentation mask for a
+frame predicted by the ResNet AutoEncoders.
 
+For the second task of future frame prediction, we attempted to use ConvLSTM, convBiLSTM, and
+VPTR. However, we found that ConvLSTM and ConvBiLSTM were not effective, as they took a long time
+to converge and yielded poor-quality results. VPTR showed promising results on a subset of the
+data, as can be seen in Figure \ref{fig:subset}. However, we encountered memory constraints and
+were unable to train the model on the entire dataset, unable to exceed a batch size of 1. We
+explored using DataParallel and DataDistributedParallel to utilize multiple GPUs, but due to
+tight memory constraints, the overhead of using these libraries was too great. We were able to
+reduce per-epoch runtime from 6 hours to 3 hours by utilizing AMP (Automatic Mixed Precision)
+and Gradient Scaling.
 
-You may use color figures.  However, it is best for the figure captions and the
-paper body to be legible if the paper is printed in either black/white or in
-color.
+Figure \ref{fig:pipeline} shows the zeroth input, intermediate feature, and zeroth output of the
+VPTR-NAR model. From the ResNet Encoder feature, it can be observed that the model is able to see
+the objects in the frame. However, it is difficult to discern what the VPTR Encoder is learning,
+as it is supposed to be the attention layer output for each frame. The VPTR Decoder output shows
+that it vaguely understands where the objects should be, and then produces the future frame
+prediction.
 
-
-\subsection{Tables}
-
-
-All tables must be centered, neat, clean and legible.  The table number and
-title always appear before the table.  See Table~\ref{sample-table}.
-
-
-Place one line space before the table title, one line space after the
-table title, and one line space after the table. The table title must
-be lower case (except for first word and proper nouns); tables are
-numbered consecutively.
-
-
-Note that publication-quality tables \emph{do not contain vertical rules.} We
-strongly suggest the use of the \verb+booktabs+ package, which allows for
-typesetting high-quality, professional tables:
-\begin{center}
-  \url{https://www.ctan.org/pkg/booktabs}
-\end{center}
-This package was used to typeset Table~\ref{sample-table}.
-
-
-\begin{table}
-  \caption{Sample table title}
-  \label{sample-table}
-  \centering
-  \begin{tabular}{lll}
-    \toprule
-    \multicolumn{2}{c}{Part}                   \\
-    \cmidrule(r){1-2}
-    Name     & Description     & Size ($\mu$m) \\
-    \midrule
-    Dendrite & Input terminal  & $\sim$100     \\
-    Axon     & Output terminal & $\sim$10      \\
-    Soma     & Cell body       & up to $10^6$  \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\section{Conclusion}
+In summary, we were able to achieve a very high accuracy of 0.993 on the semantic segmentation
+mask translation task using ResNet AutoEncoders. We achieved a decent accuracy of 0.9 on the
+future frame prediction task on a subset of the data, but the model did not perform as well on
+the test set, achieving only a 0.03 Jaccard score. Due to time and memory constraints, we were
+not able to converge the model on the entire dataset. With additional resources and time, we
+believe that we would have been able to achieve a better accuracy on the future frame prediction
+task.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
