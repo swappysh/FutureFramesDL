@@ -85,10 +85,10 @@
 
 
 \begin{abstract}
-  This paper details an attempt to solve a video frame prediction task by utilizing various 
+  This paper details an attempt to solve video frame prediction task by utilizing various 
 models and techniques, including ConvLSTM, Segformer, and AutoEncoders for semantic segmentation 
 mask, ConvLSTM in an auto-regressive manner, ConvBiLSTM in a non-auto regressive manner by 
-predicting all frames at once, and ultimately settling on VPTR Non Auto Regressive due to its 
+predicting all frames at once, and ultimately settling on VPTR Non-Auto Regressive due to its 
 convergence on a subset of data. The authors encountered significant challenges with training 
 time and memory constraints, and attempted to address these issues by using mixed precision 
 training and unsuccessfully attempting to train on multiple GPUs using PyTorch Distributed Data 
@@ -121,7 +121,7 @@ and non-autoregressive VPTR. The ResNet AutoEncoders achieved the best results f
 segmentation mask translation task with an accuracy of 0.993 on the validation set. For the 
 future frame prediction task, we achieved the best performance on a subset of the dataset using 
 the VPTR model, although we were unable to converge the model on the entire dataset due to 
-time and memory constraints.
+time and memory constraints. \footnote{Code: \href{https://github.com/swappysh/FutureFramesDL}}
 
 \section{Related Work}
 Most state-of-the-art (SOTA) models for video frame prediction use ConvLSTM-based AutoEncoders. 
@@ -144,10 +144,10 @@ and the motion information is recalled during the test to facilitate long-term p
 receptive field of RNNs.
 
 Almost all the state-of-the-art (SOTA) VFFP models are based on ConvLSTMs, i.e. convolutional 
-short-term memory networks,which are efficient and powerful. Nevertheless as per \citet{Ye2022VPTRET}, 
+short-term memory networks, which are efficient and powerful. Nevertheless, as per \citet{Ye2022VPTRET}, 
 they suffer from some inherent problems of recurrent neural networks(RNNs), such as slow training 
 and inference speed, error accumulation during inference, gradient vanishing, and predicted 
-frames quality degradation. Researchers keep improving the performance by developing more and 
+frame quality degradation. Researchers keep improving the performance by developing more and 
 more sophisticated ConvLSTM-based models. 
 
 With the introduction of transformers, they have also been applied in the Vision domain, 
@@ -172,7 +172,7 @@ contained three deconvolutional layers with one filter and a sigmoid activation 
 end to produce a semantic segmentation mask with a channel dimension of 49. We used Mean Square 
 Error Loss and the Adam optimizer with a learning rate of 0.0002 to train the model. Due to 
 memory constraints, we trained the model with a batch size of 1 for 100 epochs. We trained the 
-model on 1000 labeled videos and validated it on another 1000 labeled videos. The model took 
+model on 1000 labelled videos and validated it on another 1000 labelled videos. The model took 
 approximately 16 hours to train on a single GPU.
 
 \begin{figure}
@@ -186,14 +186,14 @@ approximately 16 hours to train on a single GPU.
 In the second task of predicting future frames, we experimented with various models, including 
 ConvLSTM, convBiLSTM, and VPTR. Ultimately, we chose VPTR-NAR as it was the most recent and 
 state-of-the-art model for video frame prediction. \citet{Ye2022VPTRET} has two approaches one 
-autoregressive and another non-autoregressive. As per their results they conculded that
+autoregressive and another non-autoregressive. As per their results, they concluded that
 NAR works better and hence we decided to use NAR. NAR utilizes a transformer encoder and a 
 transformer decoder in its architecture.
 
 The architecture of VPTR is illustrated in Figure \ref{fig:architecture}. The left part of the 
 figure, denoted as $\mathcal{T}_E$, represents the encoder, which encodes all past frame 
 features $z_t$ ($t \in [1, L]$) into memory representations $e_t$ ($t \in [1, L]$). The 
-architecture of $\mathcal{T}_E$ comprises multiple VidHRFormer blocks, each of which contains a 
+the architecture of $\mathcal{T}_E$ comprises multiple VidHRFormer blocks, each of which contains a 
 multi-head self-attention layer, a feed-forward layer, and a layer normalization layer.
 
 On the right part of the figure, denoted as $\mathcal{T}_D$, the decoder is illustrated. It 
@@ -203,14 +203,14 @@ layer is also known as the encoder-decoder attention layer, which takes the memo
 and key, and queries derived from the future frame query sequence ${q_{L+1}, \cdots, q_{L+N} }$.
 
 \section{Dataset}
-The dataset consists of 13,000 unlabeled videos, 2,000 labeled videos and 1000 test videos. 
-The labeled videos are further divided into 1,000 training videos and 1,000 validation videos. 
+The dataset consists of 13,000 unlabeled videos, 2,000 labelled videos and 1000 test videos. 
+The labelled videos are further divided into 1,000 training videos and 1,000 validation videos. 
 Labeled and unlabeled videos have 22 frames each and the test videos have 11 frames each.
-Labeled videos also have the semantic segmentation mask for all the frames. All the frames and 
+Labelled videos also have the semantic segmentation mask for all the frames. All the frames and 
 the semantic segmentation masks are of size $160 \times 240$.
 
 We created two different datasets for the two tasks. For the first task of semantic
-segmentation mask translation, we used the labeled videos and constructed a dataset consisting
+segmentation mask translation, we used the labelled videos and constructed a dataset consisting
 of frames with their corresponding semantic segmentation masks. For the second task of future
 frame prediction, we utilized only the unlabeled videos containing 11 frames each along with
 the corresponding 11 future frames to construct the dataset.
@@ -232,7 +232,7 @@ the corresponding 11 future frames to construct the dataset.
 \begin{figure}
   \centering
   \includegraphics[scale=0.3]{subset.png}
-  \caption{Training on subset of frames}
+  \caption{Training on a subset of frames}
   \label{fig:subset}
 \end{figure}
 
@@ -256,7 +256,7 @@ reduce per-epoch runtime from 6 hours to 3 hours by utilizing AMP (Automatic Mix
 and Gradient Scaling.
 
 Figure \ref{fig:pipeline} shows the zeroth input, intermediate feature, and zeroth output of the
-VPTR-NAR model. From the ResNet Encoder feature, it can be observed that the model is able to see
+VPTR-NAR model. From the ResNet Encoder feature, it can be observed that the model can see
 the objects in the frame. However, it is difficult to discern what the VPTR Encoder is learning,
 as it is supposed to be the attention layer output for each frame. The VPTR Decoder output shows
 that it vaguely understands where the objects should be, and then produces the future frame
@@ -268,7 +268,7 @@ mask translation task using ResNet AutoEncoders. We achieved a decent accuracy o
 future frame prediction task on a subset of the data, but the model did not perform as well on
 the test set, achieving only a 0.03 Jaccard score. Due to time and memory constraints, we were
 not able to converge the model on the entire dataset. With additional resources and time, we
-believe that we would have been able to achieve a better accuracy on the future frame prediction
+believe that we would have been able to achieve better accuracy on the future frame prediction
 task.
 
 \bibliographystyle{plainnat}
